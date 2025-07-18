@@ -1,8 +1,8 @@
 import axios from "axios";
 import { toast } from "react-toastify";
 
-// const API_BASE_URL = "https://branch1admin.onrender.com/api";
-const API_BASE_URL = "http://localhost:5001/api"; // Local development URL
+const API_BASE_URL = "https://admin-backend-v1-iktk.onrender.com/api";
+// const API_BASE_URL = "http://localhost:5001/api"; // Local development URL
 
 // Application configured for real-time data only
 export const MOCK_MODE = false;
