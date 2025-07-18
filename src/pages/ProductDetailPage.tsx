@@ -89,11 +89,25 @@ export const ProductDetailPage = () => {
     );
   }
 
-  const discountPercentage =
-    product.savingsPercentage ||
-    (product.offerPrice
-      ? Math.round(((product.price - product.offerPrice) / product.price) * 100)
-      : 0);
+  // Use new pricing system if available, fallback to legacy
+  const discountPercentage = product.discountPercentage
+    ? Math.round(product.discountPercentage)
+    : product.savingsPercentage ||
+      (product.offerPrice
+        ? Math.round(
+            ((product.price - product.offerPrice) / product.price) * 100
+          )
+        : 0);
+
+  // Get the actual selling price (what customer pays)
+  const sellingPrice =
+    product.profitMarginPrice ||
+    product.finalPrice ||
+    product.offerPrice ||
+    product.price;
+
+  // Get the display original price (crossed out price)
+  const originalPrice = product.calculatedOriginalPrice || product.price;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -220,35 +234,61 @@ export const ProductDetailPage = () => {
           {/* Price */}
           <div className="space-y-2">
             <div className="flex items-center space-x-3">
-              {product.offerPrice ||
-              (product.finalPrice && product.finalPrice !== product.price) ? (
+              {discountPercentage > 0 ? (
                 <>
                   <span className="text-3xl font-bold text-green-600">
-                    ₹
-                    {(
-                      product.finalPrice ||
-                      product.offerPrice ||
-                      product.price
-                    ).toLocaleString()}
+                    ₹{sellingPrice.toLocaleString()}
                   </span>
                   <span className="text-xl text-gray-500 line-through">
-                    ₹{product.price.toLocaleString()}
+                    ₹{originalPrice.toLocaleString()}
                   </span>
                 </>
               ) : (
                 <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                  ₹{(product.finalPrice || product.price).toLocaleString()}
+                  ₹{sellingPrice.toLocaleString()}
                 </span>
               )}
             </div>
-            {(product.savings || discountPercentage > 0) && (
+            {discountPercentage > 0 && (
               <p className="text-green-600 font-medium">
-                You save ₹
-                {(
-                  product.savings || product.price - (product.offerPrice || 0)
-                ).toLocaleString()}
+                You save ₹{(originalPrice - sellingPrice).toLocaleString()}
                 {discountPercentage > 0 && ` (${discountPercentage}% off)`}
               </p>
+            )}
+
+            {/* Pricing Breakdown (Admin View) */}
+            {(product.basePrice || product.profitMarginPercentage) && (
+              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Pricing Breakdown
+                </h4>
+                <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                  {product.basePrice && (
+                    <div className="flex justify-between">
+                      <span>Base Price:</span>
+                      <span>₹{product.basePrice.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {product.profitMarginPercentage && (
+                    <div className="flex justify-between">
+                      <span>Profit Margin:</span>
+                      <span>{product.profitMarginPercentage}%</span>
+                    </div>
+                  )}
+                  {product.profitMarginPrice && (
+                    <div className="flex justify-between">
+                      <span>Selling Price:</span>
+                      <span>₹{product.profitMarginPrice.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {product.discountPercentage && (
+                    <div className="flex justify-between">
+                      <span>Display Discount:</span>
+                      <span>{product.discountPercentage}%</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -296,6 +336,86 @@ export const ProductDetailPage = () => {
                     #{tag}
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Inventory & Supplier Info */}
+          {(product.brandName ||
+            product.supplierName ||
+            product.receivedDate ||
+            product.totalAvailableQuantity) && (
+            <div className="space-y-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Inventory Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {product.brandName && (
+                  <div className="flex items-center space-x-3 text-sm">
+                    <Package size={16} className="text-blue-500" />
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Brand:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {product.brandName}
+                    </span>
+                  </div>
+                )}
+                {product.supplierName && (
+                  <div className="flex items-center space-x-3 text-sm">
+                    <Package size={16} className="text-green-500" />
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Supplier:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {product.supplierName}
+                    </span>
+                  </div>
+                )}
+                {product.receivedDate && (
+                  <div className="flex items-center space-x-3 text-sm">
+                    <Calendar size={16} className="text-purple-500" />
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Received:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {product.receivedDate}
+                    </span>
+                  </div>
+                )}
+                {product.totalAvailableQuantity !== undefined && (
+                  <div className="flex items-center space-x-3 text-sm">
+                    <Package size={16} className="text-orange-500" />
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Available:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {product.totalAvailableQuantity} units
+                    </span>
+                  </div>
+                )}
+                {product.caseQuantity && (
+                  <div className="flex items-center space-x-3 text-sm">
+                    <Package size={16} className="text-indigo-500" />
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Case Info:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {product.caseQuantity}
+                    </span>
+                  </div>
+                )}
+                {product.receivedCase !== undefined && (
+                  <div className="flex items-center space-x-3 text-sm">
+                    <Package size={16} className="text-teal-500" />
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Cases Received:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {product.receivedCase}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

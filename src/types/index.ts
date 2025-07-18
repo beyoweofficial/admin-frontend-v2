@@ -41,8 +41,15 @@ export interface Product {
   productCode: string;
   name: string;
   description: string;
+  // Legacy price fields
   price: number;
   offerPrice?: number;
+  // New pricing fields
+  basePrice?: number;
+  profitMarginPercentage?: number;
+  profitMarginPrice?: number;
+  discountPercentage?: number;
+  calculatedOriginalPrice?: number;
   categoryId:
     | string
     | {
@@ -65,6 +72,15 @@ export interface Product {
   isActive?: boolean;
   youtubeLink?: string;
   stockQuantity?: number;
+  // New inventory fields
+  receivedDate?: string;
+  caseQuantity?: string;
+  receivedCase?: number;
+  brandName?: string;
+  totalAvailableQuantity?: number;
+  // Supplier fields
+  supplierName?: string;
+  supplierPhone?: string;
   // Computed fields from API
   savings?: number;
   savingsPercentage?: number;

@@ -822,8 +822,22 @@ export const ProductsPage = () => {
                   productCode: editingProduct.productCode,
                   name: editingProduct.name,
                   description: editingProduct.description,
+                  // Legacy price fields
                   price: editingProduct.price.toString(),
                   offerPrice: editingProduct.offerPrice?.toString() || "",
+                  // New pricing fields
+                  basePrice: editingProduct.basePrice?.toString() || "",
+                  profitMarginPercentage:
+                    editingProduct.profitMarginPercentage?.toString() || "65",
+                  profitMarginPrice:
+                    editingProduct.profitMarginPrice ||
+                    editingProduct.offerPrice ||
+                    editingProduct.price,
+                  discountPercentage:
+                    editingProduct.discountPercentage?.toString() || "81",
+                  calculatedOriginalPrice:
+                    editingProduct.calculatedOriginalPrice ||
+                    editingProduct.price,
                   categoryId: editingProduct.categoryId,
                   subcategoryId: editingProduct.subcategoryId || "",
                   inStock: editingProduct.inStock,
@@ -836,6 +850,16 @@ export const ProductsPage = () => {
                       : true,
                   youtubeLink: editingProduct.youtubeLink || "",
                   stockQuantity: editingProduct.stockQuantity?.toString() || "",
+                  // New inventory fields
+                  receivedDate: editingProduct.receivedDate || "",
+                  caseQuantity: editingProduct.caseQuantity || "",
+                  receivedCase: editingProduct.receivedCase?.toString() || "",
+                  brandName: editingProduct.brandName || "",
+                  totalAvailableQuantity:
+                    editingProduct.totalAvailableQuantity || 0,
+                  // Supplier fields
+                  supplierName: editingProduct.supplierName || "",
+                  supplierPhone: editingProduct.supplierPhone || "",
                   images: editingProduct.images.map((img) => ({
                     preview: img.url,
                     name: img.url.split("/").pop() || "image",

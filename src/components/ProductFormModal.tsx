@@ -12,6 +12,7 @@ import { toast } from "react-toastify";
 import { Category, Subcategory } from "../types";
 import { colors, themeConfig } from "../theme/colors";
 import { useProductCodeValidation } from "../hooks/useProductCodeValidation";
+import PricingFormSection from "./PricingFormSection";
 
 interface ProductImage {
   file?: File;
@@ -26,8 +27,15 @@ interface ProductFormData {
   productCode: string;
   name: string;
   description: string;
+  // Legacy price fields
   price: string;
   offerPrice: string;
+  // New pricing fields
+  basePrice: string;
+  profitMarginPercentage: string;
+  profitMarginPrice: number;
+  discountPercentage: string;
+  calculatedOriginalPrice: number;
   categoryId: string;
   subcategoryId: string;
   inStock: boolean;
@@ -38,6 +46,15 @@ interface ProductFormData {
   isActive: boolean;
   youtubeLink: string;
   stockQuantity: string;
+  // New inventory fields
+  receivedDate: string;
+  caseQuantity: string;
+  receivedCase: string;
+  brandName: string;
+  totalAvailableQuantity: number;
+  // Supplier fields
+  supplierName: string;
+  supplierPhone: string;
 }
 
 interface ProductFormModalProps {
@@ -76,8 +93,15 @@ export const ProductFormModal = ({
     productCode: "",
     name: "",
     description: "",
+    // Legacy price fields
     price: "",
     offerPrice: "",
+    // New pricing fields
+    basePrice: "",
+    profitMarginPercentage: "65",
+    profitMarginPrice: 0,
+    discountPercentage: "81",
+    calculatedOriginalPrice: 0,
     categoryId: "",
     subcategoryId: "",
     inStock: true,
@@ -87,8 +111,22 @@ export const ProductFormModal = ({
     // Initialize new fields
     isActive: true,
     youtubeLink: "",
-    stockQuantity: "",
+    stockQuantity: "300", // Default stock quantity
+    // Initialize new inventory fields with defaults
+    receivedDate: new Date().toISOString().split("T")[0], // Auto-fill today's date
+    caseQuantity: "100", // Default case quantity
+    receivedCase: "3", // Default received cases
+    brandName: "Ajantha fireworks", // Default brand name
+    totalAvailableQuantity: 300, // Will be auto-synced with stockQuantity
+    // Supplier fields
+    supplierName: "",
+    supplierPhone: "",
   });
+
+  // Remove pricing mode - keep it simple
+
+  // Track if totalAvailableQuantity is manually set
+  const [isQuantityManuallySet, setIsQuantityManuallySet] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -102,7 +140,53 @@ export const ProductFormModal = ({
   // Initialize form data when editing
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      // Merge initialData with default values to ensure all fields are populated
+      const formDataWithDefaults: ProductFormData = {
+        productCode: initialData.productCode || "",
+        name: initialData.name || "",
+        description: initialData.description || "",
+        // Legacy price fields
+        price: initialData.price || "",
+        offerPrice: initialData.offerPrice || "",
+        // New pricing fields
+        basePrice: initialData.basePrice || "",
+        profitMarginPercentage: initialData.profitMarginPercentage || "65",
+        profitMarginPrice: initialData.profitMarginPrice || 0,
+        discountPercentage: initialData.discountPercentage || "81",
+        calculatedOriginalPrice: initialData.calculatedOriginalPrice || 0,
+        categoryId: initialData.categoryId || "",
+        subcategoryId: initialData.subcategoryId || "",
+        inStock: initialData.inStock !== undefined ? initialData.inStock : true,
+        bestSeller:
+          initialData.bestSeller !== undefined ? initialData.bestSeller : false,
+        tags: initialData.tags || "",
+        images: initialData.images || [],
+        isActive:
+          initialData.isActive !== undefined ? initialData.isActive : true,
+        youtubeLink: initialData.youtubeLink || "",
+        stockQuantity:
+          initialData.stockQuantity ||
+          initialData.totalAvailableQuantity?.toString() ||
+          "300",
+        // New inventory fields
+        receivedDate: (() => {
+          if (initialData.receivedDate) {
+            // Convert DD-MM-YYYY to YYYY-MM-DD for date input
+            const [day, month, year] = initialData.receivedDate.split("-");
+            return `${year}-${month}-${day}`;
+          }
+          return new Date().toISOString().split("T")[0]; // Auto-fill today's date if empty
+        })(),
+        caseQuantity: initialData.caseQuantity || "",
+        receivedCase: initialData.receivedCase || "",
+        brandName: initialData.brandName || "",
+        totalAvailableQuantity: initialData.totalAvailableQuantity || 0,
+        // Supplier fields
+        supplierName: initialData.supplierName || "",
+        supplierPhone: initialData.supplierPhone || "",
+      };
+
+      setFormData(formDataWithDefaults);
     }
   }, [initialData]);
 
@@ -121,6 +205,19 @@ export const ProductFormModal = ({
       }
     }
   }, [isOpen]); // Remove dependencies to prevent constant refreshing
+
+  // Auto-sync Total Available Quantity with Stock Quantity
+  useEffect(() => {
+    if (formData.stockQuantity) {
+      const stockQty = parseInt(formData.stockQuantity);
+      if (!isNaN(stockQty) && stockQty >= 0) {
+        setFormData((prev) => ({
+          ...prev,
+          totalAvailableQuantity: stockQty,
+        }));
+      }
+    }
+  }, [formData.stockQuantity]);
 
   // Remove excessive logging
 
@@ -145,13 +242,95 @@ export const ProductFormModal = ({
     }
   });
 
+  // Function to calculate total available quantity
+  const calculateTotalQuantity = (
+    caseQuantity: string,
+    receivedCase: string
+  ): number => {
+    if (!caseQuantity || !receivedCase) return 0;
+
+    // Extract numeric value from caseQuantity (e.g., "qty:100 box" -> 100)
+    const qtyMatch = caseQuantity.match(/(\d+)/);
+    if (qtyMatch) {
+      const qty = parseInt(qtyMatch[1]);
+      const cases = parseInt(receivedCase) || 0;
+      return cases * qty;
+    }
+    return 0;
+  };
+
+  // Function to calculate pricing
+  const calculatePricing = (
+    basePrice: string,
+    profitMarginPercentage: string,
+    discountPercentage: string
+  ) => {
+    const base = parseFloat(basePrice) || 0;
+    const profitMargin = parseFloat(profitMarginPercentage) || 65;
+    const discount = parseFloat(discountPercentage) || 81;
+
+    if (base <= 0) return { profitMarginPrice: 0, calculatedOriginalPrice: 0 };
+
+    const profitMarginPrice = base + base * (profitMargin / 100);
+    const calculatedOriginalPrice = profitMarginPrice / (1 - discount / 100);
+
+    return { profitMarginPrice, calculatedOriginalPrice };
+  };
+
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Handle manual totalAvailableQuantity change (but it will be overridden by stockQuantity sync)
+    if (name === "totalAvailableQuantity") {
+      setIsQuantityManuallySet(true);
+      setFormData((prev) => ({ ...prev, [name]: parseInt(value) || 0 }));
+    }
+    // Handle pricing fields with automatic calculation
+    else if (
+      name === "basePrice" ||
+      name === "profitMarginPercentage" ||
+      name === "discountPercentage"
+    ) {
+      const newFormData = { ...formData, [name]: value };
+      const { profitMarginPrice, calculatedOriginalPrice } = calculatePricing(
+        name === "basePrice" ? value : formData.basePrice,
+        name === "profitMarginPercentage"
+          ? value
+          : formData.profitMarginPercentage,
+        name === "discountPercentage" ? value : formData.discountPercentage
+      );
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        profitMarginPrice,
+        calculatedOriginalPrice,
+        price: calculatedOriginalPrice.toString(),
+        offerPrice: profitMarginPrice.toString(),
+      }));
+    }
+    // Handle inventory fields with auto-calculation (only if not manually set)
+    else if (
+      (name === "caseQuantity" || name === "receivedCase") &&
+      !isQuantityManuallySet
+    ) {
+      const newFormData = { ...formData, [name]: value };
+      const totalQuantity = calculateTotalQuantity(
+        name === "caseQuantity" ? value : formData.caseQuantity,
+        name === "receivedCase" ? value : formData.receivedCase
+      );
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        totalAvailableQuantity: totalQuantity,
+        stockQuantity: totalQuantity.toString(),
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -307,6 +486,21 @@ export const ProductFormModal = ({
       return;
     }
 
+    // Check if base price is provided
+    if (!formData.basePrice || parseFloat(formData.basePrice) <= 0) {
+      toast.error("Please enter a valid base price.");
+      return;
+    }
+
+    // Validate supplier phone format only if provided
+    if (formData.supplierPhone && formData.supplierPhone.trim()) {
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(formData.supplierPhone)) {
+        toast.error("Please enter a valid 10-digit phone number.");
+        return;
+      }
+    }
+
     // Check if categories are available
     if (categories.length === 0) {
       toast.error(
@@ -335,6 +529,12 @@ export const ProductFormModal = ({
       return;
     }
 
+    // Check if base price is provided and valid
+    if (!formData.basePrice || parseFloat(formData.basePrice) <= 0) {
+      toast.error("Please enter a valid base price greater than 0.");
+      return;
+    }
+
     // Create FormData object for multipart/form-data submission
     const submitData = new FormData();
     if (!isEditing) {
@@ -342,8 +542,17 @@ export const ProductFormModal = ({
     }
     submitData.append("name", formData.name);
     submitData.append("description", formData.description);
-    submitData.append("price", formData.price);
 
+    // New pricing fields
+    submitData.append("basePrice", formData.basePrice);
+    submitData.append(
+      "profitMarginPercentage",
+      formData.profitMarginPercentage
+    );
+    submitData.append("discountPercentage", formData.discountPercentage);
+
+    // Legacy price fields (will be calculated on backend)
+    submitData.append("price", formData.price);
     if (formData.offerPrice) {
       submitData.append("offerPrice", formData.offerPrice);
     }
@@ -360,13 +569,38 @@ export const ProductFormModal = ({
       submitData.append("youtubeLink", formData.youtubeLink);
     }
 
-    if (formData.stockQuantity) {
-      submitData.append("stockQuantity", formData.stockQuantity);
-    }
+    // Stock quantity should match total available quantity
+    const finalStockQuantity = formData.totalAvailableQuantity || 300;
+    submitData.append("stockQuantity", finalStockQuantity.toString());
 
     if (formData.tags) {
       submitData.append("tags", formData.tags);
     }
+
+    // New inventory fields - always send these fields
+    // Convert date from YYYY-MM-DD to DD-MM-YYYY format for backend
+    const convertDateFormat = (dateStr: string) => {
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.split("-");
+      return `${day}-${month}-${year}`;
+    };
+    submitData.append(
+      "receivedDate",
+      convertDateFormat(formData.receivedDate) || ""
+    );
+    submitData.append("caseQuantity", formData.caseQuantity || "100");
+    submitData.append("receivedCase", formData.receivedCase || "3");
+    submitData.append("brandName", formData.brandName || "Ajantha fireworks");
+    submitData.append(
+      "totalAvailableQuantity",
+      formData.totalAvailableQuantity
+        ? formData.totalAvailableQuantity.toString()
+        : "300"
+    );
+
+    // Supplier fields - always send these fields
+    submitData.append("supplierName", formData.supplierName || "");
+    submitData.append("supplierPhone", formData.supplierPhone || "");
 
     // Append image files
     formData.images.forEach((img) => {
@@ -374,8 +608,6 @@ export const ProductFormModal = ({
         submitData.append("images", img.file);
       }
     });
-
-    // Submit form silently
 
     onSubmit(submitData);
   };
@@ -538,38 +770,17 @@ export const ProductFormModal = ({
               />
             </div>
 
-            {/* Price */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
-                Price (₹)*
-              </label>
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                style={{ borderRadius: themeConfig.borderRadius }}
-                required
-                min="0"
-                step="0.01"
-              />
-            </div>
-
-            {/* Offer Price */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Offer Price (₹) - Optional
-              </label>
-              <input
-                type="number"
-                name="offerPrice"
-                value={formData.offerPrice}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                style={{ borderRadius: themeConfig.borderRadius }}
-                min="0"
-                step="0.01"
+            {/* Pricing Section */}
+            <div className="sm:col-span-2">
+              <PricingFormSection
+                basePrice={formData.basePrice}
+                profitMarginPercentage={formData.profitMarginPercentage}
+                discountPercentage={formData.discountPercentage}
+                profitMarginPrice={formData.profitMarginPrice}
+                calculatedOriginalPrice={formData.calculatedOriginalPrice}
+                onBasepriceChange={handleInputChange}
+                onProfitMarginChange={handleInputChange}
+                onDiscountPercentageChange={handleInputChange}
               />
             </div>
 
@@ -885,20 +1096,190 @@ export const ProductFormModal = ({
             </label>
           </div>
 
-          {/* Stock Quantity */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
-              Stock Quantity
-            </label>
-            <input
-              type="number"
-              name="stockQuantity"
-              value={formData.stockQuantity}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              style={{ borderRadius: themeConfig.borderRadius }}
-              min="0"
-            />
+          {/* Inventory Management Section */}
+          <div className="sm:col-span-2">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+              </svg>
+              Inventory Management
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Brand Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Brand Name
+                </label>
+                <input
+                  type="text"
+                  name="brandName"
+                  value={formData.brandName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  style={{ borderRadius: themeConfig.borderRadius }}
+                  placeholder="e.g., Nike, Adidas"
+                />
+              </div>
+
+              {/* Received Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Received Date
+                </label>
+                <input
+                  type="date"
+                  name="receivedDate"
+                  value={formData.receivedDate}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  style={{ borderRadius: themeConfig.borderRadius }}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Default: Today's date. Click to choose a different date.
+                </p>
+              </div>
+
+              {/* Case Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Case Quantity
+                </label>
+                <input
+                  type="text"
+                  name="caseQuantity"
+                  value={formData.caseQuantity}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  style={{ borderRadius: themeConfig.borderRadius }}
+                  placeholder="e.g., qty:100 box, qty:50 pack"
+                />
+              </div>
+
+              {/* Received Cases */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Received Cases
+                </label>
+                <input
+                  type="number"
+                  name="receivedCase"
+                  value={formData.receivedCase}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  style={{ borderRadius: themeConfig.borderRadius }}
+                  placeholder="Number of cases received"
+                  min="0"
+                />
+              </div>
+
+              {/* Stock Quantity (Main input field) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Stock Quantity
+                </label>
+                <input
+                  type="number"
+                  name="stockQuantity"
+                  value={formData.stockQuantity}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  style={{ borderRadius: themeConfig.borderRadius }}
+                  placeholder="Enter stock quantity"
+                  min="0"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the stock quantity - Total Available Quantity will
+                  auto-sync
+                </p>
+              </div>
+
+              {/* Total Available Quantity (Auto-synced with Stock Quantity) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Total Available Quantity (Display)
+                </label>
+                <input
+                  type="number"
+                  name="totalAvailableQuantity"
+                  value={formData.totalAvailableQuantity}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  style={{ borderRadius: themeConfig.borderRadius }}
+                  min="0"
+                  readOnly
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Auto-synced with Stock Quantity
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Supplier Information Section */}
+          <div className="sm:col-span-2">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
+              </svg>
+              Supplier Information
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Supplier Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Supplier Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  name="supplierName"
+                  value={formData.supplierName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  style={{ borderRadius: themeConfig.borderRadius }}
+                  placeholder="Supplier company name"
+                />
+              </div>
+
+              {/* Supplier Phone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Supplier Phone (Optional)
+                </label>
+                <input
+                  type="tel"
+                  name="supplierPhone"
+                  value={formData.supplierPhone}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  style={{ borderRadius: themeConfig.borderRadius }}
+                  placeholder="10-digit phone number"
+                  pattern="[0-9]{10}"
+                  maxLength="10"
+                />
+              </div>
+            </div>
           </div>
 
           {/* YouTube Link */}

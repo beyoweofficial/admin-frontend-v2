@@ -31,9 +31,19 @@ export const ProductCard = ({
 
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const discountPercentage = product.offerPrice
+  // Use new pricing system if available, fallback to legacy
+  const discountPercentage = product.discountPercentage
+    ? Math.round(product.discountPercentage)
+    : product.offerPrice
     ? Math.round(((product.price - product.offerPrice) / product.price) * 100)
     : 0;
+
+  // Get the actual selling price (what customer pays)
+  const sellingPrice =
+    product.profitMarginPrice || product.offerPrice || product.price;
+
+  // Get the display original price (crossed out price)
+  const originalPrice = product.calculatedOriginalPrice || product.price;
 
   const handleViewProduct = () => {
     const slug = createProductSlug(product.name, product._id);
@@ -192,18 +202,18 @@ export const ProductCard = ({
 
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              {product.offerPrice ? (
+              {discountPercentage > 0 ? (
                 <>
                   <span className="text-sm sm:text-lg font-bold text-green-600">
-                    ₹{product.offerPrice.toLocaleString()}
+                    ₹{sellingPrice.toLocaleString()}
                   </span>
                   <span className="text-xs text-gray-500 line-through">
-                    ₹{product.price.toLocaleString()}
+                    ₹{originalPrice.toLocaleString()}
                   </span>
                 </>
               ) : (
                 <span className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
-                  ₹{product.price.toLocaleString()}
+                  ₹{sellingPrice.toLocaleString()}
                 </span>
               )}
             </div>
@@ -364,23 +374,23 @@ export const ProductCard = ({
         {/* Price Section */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex flex-col">
-            {product.offerPrice ? (
+            {discountPercentage > 0 ? (
               <>
                 <div className="flex items-center space-x-2">
                   <span className="text-2xl font-bold text-green-600">
-                    ₹{product.offerPrice.toLocaleString()}
+                    ₹{sellingPrice.toLocaleString()}
                   </span>
                   <span className="text-sm text-gray-500 line-through">
-                    ₹{product.price.toLocaleString()}
+                    ₹{originalPrice.toLocaleString()}
                   </span>
                 </div>
                 <span className="text-xs text-green-600 font-medium">
-                  Save ₹{(product.price - product.offerPrice).toLocaleString()}
+                  Save ₹{(originalPrice - sellingPrice).toLocaleString()}
                 </span>
               </>
             ) : (
               <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                ₹{product.price.toLocaleString()}
+                ₹{sellingPrice.toLocaleString()}
               </span>
             )}
           </div>
@@ -440,7 +450,9 @@ export const ProductCard = ({
             {product.bestSeller && (
               <Star size={14} className="text-yellow-500" fill="currentColor" />
             )}
-            {product.offerPrice && <Tag size={14} className="text-green-500" />}
+            {discountPercentage > 0 && (
+              <Tag size={14} className="text-green-500" />
+            )}
           </div>
         </div>
       </div>
