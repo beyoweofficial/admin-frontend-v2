@@ -12,6 +12,7 @@ import {
   List,
   Eye,
   Loader2,
+  Zap,
 } from "lucide-react";
 import api from "../utils/api";
 import { Product, Category, Subcategory } from "../types";
@@ -26,6 +27,8 @@ interface FetchProductsParams {
   search?: string;
   page?: number;
   limit?: number;
+  featured?: boolean;
+  bestSeller?: boolean;
 }
 
 const fetchProducts = async (params: FetchProductsParams) => {
@@ -35,6 +38,10 @@ const fetchProducts = async (params: FetchProductsParams) => {
   if (params.search) queryParams.append("search", params.search);
   if (params.page) queryParams.append("page", params.page.toString());
   if (params.limit) queryParams.append("limit", params.limit.toString());
+  if (params.featured !== undefined)
+    queryParams.append("featured", params.featured.toString());
+  if (params.bestSeller !== undefined)
+    queryParams.append("bestSeller", params.bestSeller.toString());
 
   try {
     const response = await api.get(`/products?${queryParams.toString()}`);
@@ -188,6 +195,8 @@ export const ProductsPage = () => {
   const [filters, setFilters] = useState({
     categoryId: "",
     search: "",
+    featured: undefined as boolean | undefined,
+    bestSeller: undefined as boolean | undefined,
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"cube" | "list">("list"); // Set list as default, removed grid
@@ -214,6 +223,8 @@ export const ProductsPage = () => {
         search: debouncedSearchTerm,
         page: currentPage,
         limit: 10,
+        featured: filters.featured,
+        bestSeller: filters.bestSeller,
       }),
     staleTime: 30000, // 30 seconds
   });
@@ -352,6 +363,64 @@ export const ProductsPage = () => {
   const startEdit = (product: Product) => {
     setEditingProduct(product);
     setIsCreateModalOpen(true);
+  };
+
+  // Toggle featured status mutation
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.patch(`/products/${id}/toggle-featured`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(data.message);
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message || "Failed to toggle featured status"
+      );
+    },
+  });
+
+  // Toggle best seller status mutation
+  const toggleBestSellerMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.patch(`/products/${id}/toggle-bestseller`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(data.message);
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message || "Failed to toggle best seller status"
+      );
+    },
+  });
+
+  const handleToggleFeatured = (id: string, currentStatus: boolean) => {
+    const action = currentStatus ? "remove from featured" : "mark as featured";
+    const confirmMessage = currentStatus
+      ? "Are you sure you want to remove this product from featured? It will become a regular product."
+      : "Are you sure you want to mark this product as featured? This will remove any best seller status.";
+
+    if (window.confirm(confirmMessage)) {
+      toggleFeaturedMutation.mutate(id);
+    }
+  };
+
+  const handleToggleBestSeller = (id: string, currentStatus: boolean) => {
+    const action = currentStatus
+      ? "remove from best sellers"
+      : "mark as best seller";
+    const confirmMessage = currentStatus
+      ? "Are you sure you want to remove this product from best sellers? It will become a regular product."
+      : "Are you sure you want to mark this product as best seller? This will remove any featured status.";
+
+    if (window.confirm(confirmMessage)) {
+      toggleBestSellerMutation.mutate(id);
+    }
   };
 
   if (productsLoading) {
@@ -513,6 +582,123 @@ export const ProductsPage = () => {
             </select>
           </div>
         </div>
+
+        {/* Product Highlight Filters */}
+        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
+            Show:
+          </span>
+
+          <button
+            onClick={() => {
+              setFilters((prev) => ({
+                ...prev,
+                featured: prev.featured === true ? undefined : true,
+                bestSeller: undefined, // Clear best seller when selecting featured
+              }));
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              filters.featured === true
+                ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-2 border-purple-300 dark:border-purple-600"
+                : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-purple-50 hover:text-purple-700 dark:hover:bg-purple-900/20"
+            }`}
+          >
+            <Zap
+              size={12}
+              fill={filters.featured === true ? "currentColor" : "none"}
+            />
+            <span>Featured</span>
+            {filters.featured === true && (
+              <span className="ml-1 text-purple-600 dark:text-purple-400">
+                ✓
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setFilters((prev) => ({
+                ...prev,
+                bestSeller: prev.bestSeller === true ? undefined : true,
+                featured: undefined, // Clear featured when selecting best seller
+              }));
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              filters.bestSeller === true
+                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-2 border-yellow-300 dark:border-yellow-600"
+                : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-yellow-50 hover:text-yellow-700 dark:hover:bg-yellow-900/20"
+            }`}
+          >
+            <Star
+              size={12}
+              fill={filters.bestSeller === true ? "currentColor" : "none"}
+            />
+            <span>Best Sellers</span>
+            {filters.bestSeller === true && (
+              <span className="ml-1 text-yellow-600 dark:text-yellow-400">
+                ✓
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setFilters((prev) => ({
+                ...prev,
+                featured: undefined,
+                bestSeller: undefined,
+              }));
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              filters.featured === undefined && filters.bestSeller === undefined
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-2 border-blue-300 dark:border-blue-600"
+                : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20"
+            }`}
+          >
+            <Package size={12} />
+            <span>All Products</span>
+            {filters.featured === undefined &&
+              filters.bestSeller === undefined && (
+                <span className="ml-1 text-blue-600 dark:text-blue-400">✓</span>
+              )}
+          </button>
+
+          {/* Active filters indicator */}
+          {(filters.featured !== undefined ||
+            filters.bestSeller !== undefined ||
+            filters.categoryId ||
+            filters.search) && (
+            <div className="flex items-center space-x-2 ml-auto">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {(() => {
+                  let count = 0;
+                  if (filters.featured !== undefined) count++;
+                  if (filters.bestSeller !== undefined) count++;
+                  if (filters.categoryId) count++;
+                  if (filters.search) count++;
+                  return `${count} filter${count !== 1 ? "s" : ""} active`;
+                })()}
+              </span>
+              <button
+                onClick={() => {
+                  setFilters({
+                    categoryId: "",
+                    search: "",
+                    featured: undefined,
+                    bestSeller: undefined,
+                  });
+                  setCurrentPage(1);
+                }}
+                className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 underline"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Products Grid */}
@@ -558,8 +744,22 @@ export const ProductsPage = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Package size={32} className="text-gray-400" />
+                        <img
+                          src="/defaultimage.jpg"
+                          alt={`${product.name} - Default`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback to package icon if default image fails to load
+                            e.currentTarget.style.display = "none";
+                            e.currentTarget.nextElementSibling?.classList.remove(
+                              "hidden"
+                            );
+                          }}
+                        />
                       )}
+                      <div className="hidden">
+                        <Package size={32} className="text-gray-400" />
+                      </div>
                     </div>
 
                     {/* Content */}
@@ -570,12 +770,20 @@ export const ProductsPage = () => {
                             <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                               {product.name}
                             </h3>
-                            {product.bestSeller && (
-                              <span className="inline-flex items-center space-x-1 px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full text-xs font-medium w-fit mt-1 sm:mt-0">
-                                <Star size={12} fill="currentColor" />
-                                <span>Best Seller</span>
-                              </span>
-                            )}
+                            <div className="flex flex-wrap gap-1 mt-1 sm:mt-0">
+                              {product.featured && (
+                                <span className="inline-flex items-center space-x-1 px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 rounded-full text-xs font-medium w-fit">
+                                  <Zap size={12} fill="currentColor" />
+                                  <span>Featured</span>
+                                </span>
+                              )}
+                              {product.bestSeller && (
+                                <span className="inline-flex items-center space-x-1 px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full text-xs font-medium w-fit">
+                                  <Star size={12} fill="currentColor" />
+                                  <span>Best Seller</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2 text-sm sm:text-base">
@@ -697,6 +905,61 @@ export const ProductsPage = () => {
                             </span>
                             <span className="sm:hidden">View</span>
                           </button>
+
+                          {/* Featured Toggle Button */}
+                          <button
+                            onClick={() =>
+                              handleToggleFeatured(
+                                product._id,
+                                product.featured
+                              )
+                            }
+                            className={`p-2 rounded-lg transition-colors ${
+                              product.featured
+                                ? "text-purple-600 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50"
+                                : "text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                            }`}
+                            title={
+                              product.featured
+                                ? "Remove from Featured"
+                                : "Mark as Featured"
+                            }
+                          >
+                            <Zap
+                              size={16}
+                              className="sm:w-[18px] sm:h-[18px]"
+                              fill={product.featured ? "currentColor" : "none"}
+                            />
+                          </button>
+
+                          {/* Best Seller Toggle Button */}
+                          <button
+                            onClick={() =>
+                              handleToggleBestSeller(
+                                product._id,
+                                product.bestSeller
+                              )
+                            }
+                            className={`p-2 rounded-lg transition-colors ${
+                              product.bestSeller
+                                ? "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50"
+                                : "text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30"
+                            }`}
+                            title={
+                              product.bestSeller
+                                ? "Remove from Best Sellers"
+                                : "Mark as Best Seller"
+                            }
+                          >
+                            <Star
+                              size={16}
+                              className="sm:w-[18px] sm:h-[18px]"
+                              fill={
+                                product.bestSeller ? "currentColor" : "none"
+                              }
+                            />
+                          </button>
+
                           <button
                             onClick={() => startEdit(product)}
                             className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"

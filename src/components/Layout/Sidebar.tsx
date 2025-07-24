@@ -12,6 +12,7 @@ import {
   Tag,
   Zap,
   Eye,
+  FileText,
 } from "lucide-react";
 import { colors, themeConfig } from "../../theme/colors";
 
@@ -83,6 +84,11 @@ const menuItems = [
       //   icon: LayoutDashboard,
       // },
     ],
+  },
+  {
+    path: "/price-lists",
+    icon: FileText,
+    label: "Price Lists",
   },
 ];
 

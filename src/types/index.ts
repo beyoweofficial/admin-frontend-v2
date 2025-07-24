@@ -64,6 +64,7 @@ export interface Product {
       };
   inStock: boolean;
   bestSeller: boolean;
+  featured?: boolean;
   tags: string[];
   images: ProductImage[];
   createdAt: string;
@@ -151,4 +152,25 @@ export interface ProductCodeCheckResponse {
   productCode: string;
   isAvailable: boolean;
   message: string;
+}
+
+export interface PriceList {
+  _id: string;
+  documentName: string;
+  pdfUrl: string;
+  publicId: string;
+  fileSize: number;
+  isActive: boolean;
+  uploadedBy: {
+    _id: string;
+    username: string;
+    email: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PriceListFormData {
+  documentName: string;
+  pdf?: File;
 }

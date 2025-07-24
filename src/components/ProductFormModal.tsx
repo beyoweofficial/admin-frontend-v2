@@ -40,6 +40,7 @@ interface ProductFormData {
   subcategoryId: string;
   inStock: boolean;
   bestSeller: boolean;
+  featured: boolean;
   tags: string;
   images: ProductImage[];
   // New fields
@@ -106,6 +107,7 @@ export const ProductFormModal = ({
     subcategoryId: "",
     inStock: true,
     bestSeller: false,
+    featured: false,
     tags: "",
     images: [],
     // Initialize new fields
@@ -122,6 +124,11 @@ export const ProductFormModal = ({
     supplierName: "",
     supplierPhone: "",
   });
+
+  // State to track if default image should be used
+  const [useDefaultImage, setUseDefaultImage] = useState(true);
+  // State to track if we're loading the default image
+  const [isLoadingDefaultImage, setIsLoadingDefaultImage] = useState(false);
 
   // Remove pricing mode - keep it simple
 
@@ -159,6 +166,8 @@ export const ProductFormModal = ({
         inStock: initialData.inStock !== undefined ? initialData.inStock : true,
         bestSeller:
           initialData.bestSeller !== undefined ? initialData.bestSeller : false,
+        featured:
+          initialData.featured !== undefined ? initialData.featured : false,
         tags: initialData.tags || "",
         images: initialData.images || [],
         isActive:
@@ -187,8 +196,15 @@ export const ProductFormModal = ({
       };
 
       setFormData(formDataWithDefaults);
+      // If editing and has images, don't use default image
+      setUseDefaultImage(
+        !initialData.images || initialData.images.length === 0
+      );
+    } else {
+      // For new products, start with default image enabled
+      setUseDefaultImage(true);
     }
-  }, [initialData]);
+  }, [initialData, isOpen]);
 
   // Silent data fetch only if absolutely necessary
   useEffect(() => {
@@ -335,7 +351,28 @@ export const ProductFormModal = ({
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: checked }));
+
+    // Handle mutual exclusivity between bestSeller and featured
+    if (name === "bestSeller") {
+      if (checked) {
+        // If checking bestSeller, uncheck featured
+        setFormData((prev) => ({ ...prev, bestSeller: true, featured: false }));
+      } else {
+        // If unchecking bestSeller, just uncheck it (no featured change)
+        setFormData((prev) => ({ ...prev, bestSeller: false }));
+      }
+    } else if (name === "featured") {
+      if (checked) {
+        // If checking featured, uncheck bestSeller
+        setFormData((prev) => ({ ...prev, featured: true, bestSeller: false }));
+      } else {
+        // If unchecking featured, just uncheck it (no bestSeller change)
+        setFormData((prev) => ({ ...prev, featured: false }));
+      }
+    } else {
+      // Handle other checkboxes normally
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    }
   };
 
   const validateFile = (
@@ -415,6 +452,11 @@ export const ProductFormModal = ({
       images: [...prev.images, ...newImages].slice(0, 3), // Limit to 3 images
     }));
 
+    // Disable default image when user adds their own images
+    if (newImages.length > 0) {
+      setUseDefaultImage(false);
+    }
+
     // Reset the file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -426,23 +468,33 @@ export const ProductFormModal = ({
 
     // If it's an invalid image, remove without confirmation
     if (!imageToRemove.isValid) {
+      const newImages = formData.images.filter((_, i) => i !== index);
       setFormData((prev) => ({
         ...prev,
-        images: prev.images.filter((_, i) => i !== index),
+        images: newImages,
       }));
+      // Re-enable default image if no images left and not editing
+      if (newImages.length === 0 && !isEditing) {
+        setUseDefaultImage(true);
+      }
       return;
     }
 
     // For valid images, ask for confirmation
     if (window.confirm(`Are you sure you want to remove this image?`)) {
+      const newImages = formData.images.filter((_, i) => i !== index);
       setFormData((prev) => ({
         ...prev,
-        images: prev.images.filter((_, i) => i !== index),
+        images: newImages,
       }));
+      // Re-enable default image if no images left and not editing
+      if (newImages.length === 0 && !isEditing) {
+        setUseDefaultImage(true);
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Check product code validation for new products
@@ -480,8 +532,9 @@ export const ProductFormModal = ({
       return;
     }
 
-    // Check if at least one image is provided for new products
-    if (!isEditing && formData.images.length === 0) {
+    // For new products, we always have an image (either user uploaded or default)
+    // For editing, check if at least one image is provided
+    if (isEditing && formData.images.length === 0) {
       toast.error("Please upload at least one image.");
       return;
     }
@@ -561,6 +614,7 @@ export const ProductFormModal = ({
     submitData.append("subcategoryId", formData.subcategoryId);
     submitData.append("inStock", String(formData.inStock));
     submitData.append("bestSeller", String(formData.bestSeller));
+    submitData.append("featured", String(formData.featured));
 
     // Add new fields
     submitData.append("isActive", String(formData.isActive));
@@ -603,11 +657,37 @@ export const ProductFormModal = ({
     submitData.append("supplierPhone", formData.supplierPhone || "");
 
     // Append image files
-    formData.images.forEach((img) => {
-      if (img.file) {
-        submitData.append("images", img.file);
+    if (formData.images.length > 0) {
+      // User has uploaded images, use them
+      formData.images.forEach((img) => {
+        if (img.file) {
+          submitData.append("images", img.file);
+        }
+      });
+    } else if (!isEditing && useDefaultImage) {
+      // No user images and creating new product, fetch and append default image
+      setIsLoadingDefaultImage(true);
+      try {
+        const response = await fetch("/defaultimage.jpg");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const blob = await response.blob();
+        const defaultImageFile = new File([blob], "defaultimage.jpg", {
+          type: blob.type || "image/jpeg",
+        });
+        submitData.append("images", defaultImageFile);
+      } catch (error) {
+        console.error("Failed to load default image:", error);
+        toast.error(
+          "Failed to load default image. Please upload an image manually."
+        );
+        setIsLoadingDefaultImage(false);
+        return;
+      } finally {
+        setIsLoadingDefaultImage(false);
       }
-    });
+    }
 
     onSubmit(submitData);
   };
@@ -928,7 +1008,13 @@ export const ProductFormModal = ({
           {/* Image Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Product Images* (Max 3 images, 1MB each, JPG/PNG only)
+              Product Images {isEditing ? "*" : ""} (Max 3 images, 1MB each,
+              JPG/PNG only)
+              {!isEditing && (
+                <span className="block text-xs text-blue-600 font-normal mt-1">
+                  Default image will be used if no images are uploaded
+                </span>
+              )}
             </label>
 
             <div
@@ -1009,8 +1095,34 @@ export const ProductFormModal = ({
             </div>
 
             {/* Image Previews */}
-            {formData.images.length > 0 && (
+            {(formData.images.length > 0 ||
+              (!isEditing && useDefaultImage)) && (
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Show default image if no user images and not editing */}
+                {!isEditing &&
+                  useDefaultImage &&
+                  formData.images.length === 0 && (
+                    <div className="relative border border-blue-300 rounded-lg overflow-hidden">
+                      <img
+                        src="/defaultimage.jpg"
+                        alt="Default product image"
+                        className="w-full h-32 object-cover"
+                      />
+                      <div className="p-2 bg-white dark:bg-gray-700 text-xs">
+                        <div className="truncate text-blue-600 font-medium">
+                          Default Image
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-blue-600">
+                            Will be used automatically
+                          </span>
+                          <CheckCircle size={16} className="text-blue-500" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Show user uploaded images */}
                 {formData.images.map((image, index) => (
                   <div
                     key={index}
@@ -1069,18 +1181,124 @@ export const ProductFormModal = ({
               </span>
             </label>
 
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="bestSeller"
-                checked={formData.bestSeller}
-                onChange={handleCheckboxChange}
-                className="rounded"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Best Seller
-              </span>
-            </label>
+            {/* Best Seller and Featured Product - Mutually Exclusive */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Product Highlights
+                </h4>
+                <div className="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400">
+                  <AlertCircle size={14} />
+                  <span>Optional - Choose one or none</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label
+                  className={`flex items-center space-x-2 p-3 rounded-lg border-2 transition-all cursor-pointer ${
+                    formData.bestSeller
+                      ? "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-500"
+                      : formData.featured
+                      ? "border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 opacity-60 cursor-not-allowed"
+                      : "border-gray-200 bg-white dark:bg-gray-700 dark:border-gray-600 hover:border-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/10"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    name="bestSeller"
+                    checked={formData.bestSeller}
+                    onChange={handleCheckboxChange}
+                    disabled={formData.featured}
+                    className="rounded text-yellow-600 focus:ring-yellow-500 disabled:opacity-50"
+                  />
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30">
+                      <svg
+                        className="w-3 h-3 text-yellow-600 dark:text-yellow-400"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Best Seller
+                    </span>
+                  </div>
+                </label>
+
+                <label
+                  className={`flex items-center space-x-2 p-3 rounded-lg border-2 transition-all cursor-pointer ${
+                    formData.featured
+                      ? "border-purple-400 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-500"
+                      : formData.bestSeller
+                      ? "border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 opacity-60 cursor-not-allowed"
+                      : "border-gray-200 bg-white dark:bg-gray-700 dark:border-gray-600 hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/10"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    name="featured"
+                    checked={formData.featured}
+                    onChange={handleCheckboxChange}
+                    disabled={formData.bestSeller}
+                    className="rounded text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+                  />
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30">
+                      <svg
+                        className="w-3 h-3 text-purple-600 dark:text-purple-400"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Featured
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-start space-x-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg
+                    className="w-4 h-4 text-gray-600 dark:text-gray-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="text-xs text-gray-700 dark:text-gray-300">
+                  <p className="font-medium">
+                    {formData.bestSeller
+                      ? "Best Seller Selected"
+                      : formData.featured
+                      ? "Featured Product Selected"
+                      : "Regular Product"}
+                  </p>
+                  <p className="mt-1">
+                    {formData.bestSeller || formData.featured
+                      ? `This product will be highlighted as ${
+                          formData.bestSeller
+                            ? "a best seller"
+                            : "a featured item"
+                        } in the store. You can uncheck to make it a regular product.`
+                      : "This is a regular product with no special highlighting. You can optionally mark it as Featured or Best Seller."}
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <label className="flex items-center space-x-2">
               <input
@@ -1312,6 +1530,7 @@ export const ProductFormModal = ({
               type="submit"
               disabled={
                 isSubmitting ||
+                isLoadingDefaultImage ||
                 formData.images.some((img) => !img.isValid) ||
                 (!isEditing &&
                   (!productCodeValidation.isAvailable ||
@@ -1326,6 +1545,8 @@ export const ProductFormModal = ({
             >
               {isSubmitting
                 ? "Saving..."
+                : isLoadingDefaultImage
+                ? "Loading default image..."
                 : isEditing
                 ? "Update Product"
                 : "Create Product"}

@@ -22,6 +22,7 @@ import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { QuickShoppingPage } from "./pages/QuickShoppingPageSimple";
 import { QuickShoppingViewPage } from "./pages/QuickShoppingViewPage";
 import { QuickShoppingTableView } from "./pages/QuickShoppingTableView";
+import { PriceListPage } from "./pages/PriceListPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -194,6 +195,17 @@ function App() {
                     <PrivateRoute>
                       <Layout>
                         <QuickShoppingTableView />
+                      </Layout>
+                    </PrivateRoute>
+                  }
+                />
+
+                <Route
+                  path="/price-lists"
+                  element={
+                    <PrivateRoute>
+                      <Layout>
+                        <PriceListPage />
                       </Layout>
                     </PrivateRoute>
                   }

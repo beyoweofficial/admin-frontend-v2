@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Zap,
 } from "lucide-react";
 import api from "../utils/api";
 import { Product } from "../types";
@@ -165,9 +166,24 @@ export const ProductDetailPage = () => {
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <Package size={64} className="text-gray-400" />
-              </div>
+              <>
+                <img
+                  src="/defaultimage.jpg"
+                  alt={`${product.name} - Default`}
+                  className="w-full h-full object-cover cursor-zoom-in"
+                  onClick={() => setIsImageModalOpen(true)}
+                  onError={(e) => {
+                    // Fallback to package icon if default image fails to load
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextElementSibling?.classList.remove(
+                      "hidden"
+                    );
+                  }}
+                />
+                <div className="hidden flex items-center justify-center h-full">
+                  <Package size={64} className="text-gray-400" />
+                </div>
+              </>
             )}
           </div>
 
@@ -207,6 +223,12 @@ export const ProductDetailPage = () => {
 
             {/* Badges */}
             <div className="flex items-center space-x-2 mb-4">
+              {product.featured && (
+                <span className="inline-flex items-center space-x-1 px-3 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 rounded-full text-sm font-medium">
+                  <Zap size={14} fill="currentColor" />
+                  <span>Featured</span>
+                </span>
+              )}
               {product.bestSeller && (
                 <span className="inline-flex items-center space-x-1 px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full text-sm font-medium">
                   <Star size={14} fill="currentColor" />

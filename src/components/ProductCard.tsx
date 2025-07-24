@@ -82,9 +82,25 @@ export const ProductCard = ({
               )}
             </>
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <Package size={24} className="sm:w-8 sm:h-8 text-gray-400" />
-            </div>
+            <>
+              <img
+                src="/defaultimage.jpg"
+                alt={`${product.name} - Default`}
+                className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-110 sm:group-hover:scale-125 ${
+                  imageLoaded ? "opacity-100" : "opacity-0"
+                }`}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => {
+                  // Fallback to package icon if default image fails to load
+                  setImageLoaded(false);
+                }}
+              />
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-500"></div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Enhanced Gradient Overlay */}
@@ -105,6 +121,17 @@ export const ProductCard = ({
 
           {/* Enhanced Badges */}
           <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex flex-col space-y-1 sm:space-y-2">
+            {product.featured && (
+              <span className="inline-flex items-center space-x-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-full text-xs font-bold shadow-lg">
+                <Zap
+                  size={8}
+                  className="sm:w-2.5 sm:h-2.5"
+                  fill="currentColor"
+                />
+                <span className="hidden sm:inline">FEATURED</span>
+                <span className="sm:hidden">⭐</span>
+              </span>
+            )}
             {product.bestSeller && (
               <span className="inline-flex items-center space-x-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white rounded-full text-xs font-bold shadow-lg animate-pulse">
                 <Star
@@ -267,9 +294,25 @@ export const ProductCard = ({
             )}
           </>
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <Package size={48} className="text-gray-400" />
-          </div>
+          <>
+            <img
+              src="/defaultimage.jpg"
+              alt={`${product.name} - Default`}
+              className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-110 ${
+                imageLoaded ? "opacity-100" : "opacity-0"
+              }`}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => {
+                // Fallback to package icon if default image fails to load
+                setImageLoaded(false);
+              }}
+            />
+            {!imageLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Gradient Overlay */}
@@ -295,6 +338,13 @@ export const ProductCard = ({
 
         {/* Top Badges */}
         <div className="absolute top-4 left-4 flex flex-col space-y-2">
+          {product.featured && (
+            <div className="inline-flex items-center space-x-1 px-3 py-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-full text-xs font-bold shadow-lg">
+              <Zap size={12} fill="currentColor" />
+              <span>FEATURED</span>
+              <Star size={12} />
+            </div>
+          )}
           {product.bestSeller && (
             <div className="inline-flex items-center space-x-1 px-3 py-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white rounded-full text-xs font-bold shadow-lg animate-pulse">
               <Star size={12} fill="currentColor" />
