@@ -82,6 +82,8 @@ export interface Product {
   // Supplier fields
   supplierName?: string;
   supplierPhone?: string;
+  // Customer quantity limit
+  maxQuantityPerCustomer?: number | null;
   // Computed fields from API
   savings?: number;
   savingsPercentage?: number;

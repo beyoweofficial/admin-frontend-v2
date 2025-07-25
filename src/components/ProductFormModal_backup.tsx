@@ -717,12 +717,12 @@ export const ProductFormModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
       <div
         ref={modalRef}
-        className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-3 sm:p-6 max-w-2xl w-full my-4 sm:my-8 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 max-w-5xl w-full my-2 sm:my-4 max-h-[98vh] sm:max-h-[95vh] overflow-y-auto"
         style={{
           borderRadius: themeConfig.borderRadius,
         }}
       >
-        <div className="flex items-center justify-between mb-4 sm:mb-6 sticky top-0 bg-white dark:bg-gray-800 z-10 py-2">
+        <div className="flex items-center justify-between mb-3 sticky top-0 bg-white dark:bg-gray-800 z-10 py-2">
           <div className="flex items-center min-w-0 flex-1">
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
               {isEditing ? "Edit Product" : "Create Product"}
@@ -751,11 +751,12 @@ export const ProductFormModal = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Row 1: Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Product Code */}
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Product Code*
               </label>
               <div className="relative">
@@ -773,7 +774,7 @@ export const ProductFormModal = ({
                       productCode: value,
                     }));
                   }}
-                  className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 transition-all ${
+                  className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 transition-all ${
                     productCodeValidation.isChecking
                       ? "border-yellow-300 focus:ring-yellow-500 focus:border-yellow-500"
                       : productCodeValidation.hasChecked
@@ -848,8 +849,8 @@ export const ProductFormModal = ({
             </div>
 
             {/* Product Name */}
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Product Name*
               </label>
               <input
@@ -857,14 +858,34 @@ export const ProductFormModal = ({
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="Enter product name"
                 required
               />
             </div>
+          </div>
 
+          {/* Row 2: Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
+              style={{ borderRadius: themeConfig.borderRadius }}
+              placeholder="Enter product description"
+            />
+          </div>
+
+          {/* Row 3: Pricing, Category, Subcategory */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {/* Pricing Section */}
-            <div className="sm:col-span-2">
+            <div>
               <PricingFormSection
                 basePrice={formData.basePrice}
                 profitMarginPercentage={formData.profitMarginPercentage}
@@ -984,50 +1005,249 @@ export const ProductFormModal = ({
                   </p>
                 )}
             </div>
+          </div>
+
+          {/* Row 4: Stock & Status */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Stock Quantity */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Stock Qty
+              </label>
+              <input
+                type="number"
+                name="stockQuantity"
+                value={formData.stockQuantity}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="0"
+                min="0"
+              />
+            </div>
+
+            {/* In Stock Toggle */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                In Stock
+              </label>
+              <label className="flex items-center space-x-2 p-2 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="inStock"
+                  checked={formData.inStock}
+                  onChange={handleInputChange}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Available
+                </span>
+              </label>
+            </div>
+
+            {/* Best Seller Toggle */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Best Seller
+              </label>
+              <label className="flex items-center space-x-2 p-2 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="bestSeller"
+                  checked={formData.bestSeller}
+                  onChange={handleInputChange}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Yes
+                </span>
+              </label>
+            </div>
+
+            {/* Featured Toggle */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Featured
+              </label>
+              <label className="flex items-center space-x-2 p-2 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="featured"
+                  checked={formData.featured}
+                  onChange={handleInputChange}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Yes
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Row 5: Additional Info */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* YouTube Link */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                YouTube Link
+              </label>
+              <input
+                type="url"
+                name="youtubeLink"
+                value={formData.youtubeLink}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="https://youtube.com/..."
+              />
+            </div>
+
+            {/* Brand Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Brand
+              </label>
+              <input
+                type="text"
+                name="brandName"
+                value={formData.brandName}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="Brand name"
+              />
+            </div>
+
+            {/* Supplier Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Supplier
+              </label>
+              <input
+                type="text"
+                name="supplierName"
+                value={formData.supplierName}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="Supplier name"
+              />
+            </div>
+          </div>
+
+          {/* Row 6: Inventory */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Received Cases */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Received Cases
+              </label>
+              <input
+                type="number"
+                name="receivedCase"
+                value={formData.receivedCase}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="0"
+                min="0"
+              />
+            </div>
+
+            {/* Case Quantity */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Case Qty
+              </label>
+              <input
+                type="text"
+                name="caseQuantity"
+                value={formData.caseQuantity}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="e.g., 100"
+              />
+            </div>
+
+            {/* Total Available */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Total Available
+              </label>
+              <input
+                type="number"
+                name="totalAvailableQuantity"
+                value={formData.totalAvailableQuantity}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="0"
+                min="0"
+              />
+            </div>
+          </div>
+
+          {/* Row 7: Limits & Contact */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Max Quantity Per Customer */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Max Qty/Customer
+              </label>
+              <input
+                type="number"
+                name="maxQuantityPerCustomer"
+                value={formData.maxQuantityPerCustomer}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="No limit"
+                min="1"
+              />
+            </div>
+
+            {/* Supplier Phone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Supplier Phone
+              </label>
+              <input
+                type="tel"
+                name="supplierPhone"
+                value={formData.supplierPhone}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                style={{ borderRadius: themeConfig.borderRadius }}
+                placeholder="10-digit phone"
+                pattern="[0-9]{10}"
+                maxLength={10}
+              />
+            </div>
 
             {/* Tags */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Tags (comma-separated)
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Tags
               </label>
               <input
                 type="text"
                 name="tags"
                 value={formData.tags}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 style={{ borderRadius: themeConfig.borderRadius }}
-                placeholder="e.g., spicy, bestseller, premium"
+                placeholder="tag1, tag2, tag3"
               />
             </div>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description*
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              style={{ borderRadius: themeConfig.borderRadius }}
-              required
-            />
-          </div>
 
-          {/* Image Upload */}
+
+          {/* Row 8: Images */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Product Images {isEditing ? "*" : ""} (Max 3 images, 1MB each,
-              JPG/PNG only)
-              {!isEditing && (
-                <span className="block text-xs text-blue-600 font-normal mt-1">
-                  Default image will be used if no images are uploaded
-                </span>
-              )}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Images {isEditing ? "*" : ""} (Max 3, 1MB each)
             </label>
 
             <div
@@ -1179,23 +1399,8 @@ export const ProductFormModal = ({
             )}
           </div>
 
-          {/* Toggles */}
-          <div className="flex flex-wrap gap-4 sm:gap-6">
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="inStock"
-                checked={formData.inStock}
-                onChange={handleCheckboxChange}
-                className="rounded"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                In Stock
-              </span>
-            </label>
-
-            {/* Best Seller and Featured Product - Mutually Exclusive */}
-            <div className="space-y-3">
+          {/* Submit Buttons */}
+          <div className="flex space-x-3 pt-4 sticky bottom-0 bg-white dark:bg-gray-800 py-4 z-10">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Product Highlights
